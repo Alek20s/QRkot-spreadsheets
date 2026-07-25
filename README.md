@@ -1,1 +1,2 @@
 # QRkot-spreadsheets
+# check connection
