@@ -1,12 +1,10 @@
+# app/main.py
 from fastapi import FastAPI
 
-from app.api.endpoints.charity_project import (
-    router as charity_project_router,
-)
-from app.api.endpoints.donation import router as donation_router
 from app.core.config import settings
 from app.core.db import Base, engine
 from app.core.user import auth_backend, fastapi_users
+from app.routers import main_router
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 
 app = FastAPI(
@@ -14,16 +12,7 @@ app = FastAPI(
     description=settings.app_description,
 )
 
-app.include_router(
-    charity_project_router,
-    prefix='/charity_project',
-    tags=['Charity Projects'],
-)
-app.include_router(
-    donation_router,
-    prefix='/donation',
-    tags=['Donations'],
-)
+app.include_router(main_router)
 app.include_router(
     fastapi_users.get_auth_router(auth_backend),
     prefix='/auth/jwt',
