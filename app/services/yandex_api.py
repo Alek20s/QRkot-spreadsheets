@@ -8,12 +8,16 @@ import xlsxwriter
 from app.core.yandex_client import YandexDiskClient
 from app.models.charity_project import CharityProject
 
+SECONDS_IN_DAY = 86400
+SECONDS_IN_HOUR = 3600
+SECONDS_IN_MINUTE = 60
+
 
 def format_time_delta(delta: timedelta) -> str:
     total_seconds = int(delta.total_seconds())
-    days, remainder = divmod(total_seconds, 86400)
-    hours, remainder = divmod(remainder, 3600)
-    minutes = remainder // 60
+    days, remainder = divmod(total_seconds, SECONDS_IN_DAY)
+    hours, remainder = divmod(remainder, SECONDS_IN_HOUR)
+    minutes = remainder // SECONDS_IN_MINUTE
 
     if days:
         return f'{days} дн. {hours} ч.'
