@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from io import BytesIO
 from typing import List
 
-import xlsxwriter
+import pandas as pd
 
 from app.core.yandex_client import YandexDiskClient
 from app.models.charity_project import CharityProject
@@ -11,6 +11,9 @@ from app.models.charity_project import CharityProject
 SECONDS_IN_DAY = 86400
 SECONDS_IN_HOUR = 3600
 SECONDS_IN_MINUTE = 60
+
+REPORT_COLUMNS = ('Название проекта', 'Время сбора', 'Описание')
+DATA_START_ROW = 2
 
 
 def format_time_delta(delta: timedelta) -> str:
@@ -32,43 +35,52 @@ async def create_simple_report(
     filename = f'report_{datetime.now().strftime(report_format)}.xlsx'
     upload_url, disk_path = await client.create_excel_file(filename)
 
+    rows = [
+        {
+            'Название проекта': project.name,
+            'Время сбора': format_time_delta(
+                project.close_date - project.create_date
+            ),
+            'Описание': project.description,
+        }
+        for project in projects
+    ]
+    dataframe = pd.DataFrame(rows, columns=REPORT_COLUMNS)
+
     output = BytesIO()
-    workbook = xlsxwriter.Workbook(output)
-    worksheet = workbook.add_worksheet('Отчёт')
-
-    bold_format = workbook.add_format({'bold': True, 'border': 1})
-    header_format = workbook.add_format({
-        'bold': True,
-        'bg_color': '#D9D9D9',
-        'border': 1,
-    })
-    cell_format = workbook.add_format({'border': 1})
-
-    worksheet.write(
-        0, 0,
-        f'Отчёт от {datetime.now().strftime("%d.%m.%Y")}',
-        bold_format,
-    )
-
-    headers = ('Название проекта', 'Время сбора', 'Описание')
-    for col, header in enumerate(headers):
-        worksheet.write(1, col, header, header_format)
-
-    row = 2
-    for project in projects:
-        time_delta = format_time_delta(
-            project.close_date - project.create_date
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        dataframe.to_excel(
+            writer, sheet_name='Отчёт', index=False, startrow=1,
         )
-        worksheet.write(row, 0, project.name, cell_format)
-        worksheet.write(row, 1, time_delta, cell_format)
-        worksheet.write(row, 2, project.description, cell_format)
-        row += 1
+        workbook = writer.book
+        worksheet = writer.sheets['Отчёт']
 
-    worksheet.write(row, 0, 'Итого проектов:', bold_format)
-    worksheet.write(row, 1, len(projects), bold_format)
+        bold_format = workbook.add_format({'bold': True, 'border': 1})
+        header_format = workbook.add_format({
+            'bold': True,
+            'bg_color': '#D9D9D9',
+            'border': 1,
+        })
+        cell_format = workbook.add_format({'border': 1})
 
-    workbook.close()
+        worksheet.write(
+            0, 0,
+            f'Отчёт от {datetime.now().strftime("%d.%m.%Y")}',
+            bold_format,
+        )
+        for col, name in enumerate(dataframe.columns):
+            worksheet.write(1, col, name, header_format)
+        for row_idx in range(len(dataframe)):
+            for col_idx in range(len(dataframe.columns)):
+                worksheet.write(
+                    row_idx + DATA_START_ROW, col_idx,
+                    dataframe.iloc[row_idx, col_idx], cell_format,
+                )
+
+        total_row = len(dataframe) + DATA_START_ROW
+        worksheet.write(total_row, 0, 'Итого проектов:', bold_format)
+        worksheet.write(total_row, 1, len(dataframe), bold_format)
+
     output.seek(0)
-
     await client.upload_file(upload_url, output.read())
     return await client.publish_file(disk_path)

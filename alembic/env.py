@@ -1,15 +1,16 @@
+# alembic/env.py
+import asyncio
 from logging.config import fileConfig
 
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-
 from app.core.config import settings
 from app.core.db import Base
-from app.models.charity_project import CharityProject
-from app.models.donation import Donation
-from app.models.user import User
+from app.models.charity_project import CharityProject  # noqa
+from app.models.donation import Donation  # noqa
+from app.models.user import User  # noqa
 
 config = context.config
 config.set_main_option('sqlalchemy.url', settings.database_url)
@@ -54,7 +55,6 @@ async def run_migrations_online() -> None:
     await connectable.dispose()
 
 
-import asyncio
 if context.is_offline_mode():
     run_migrations_offline()
 else:
